@@ -3,6 +3,9 @@
 target
 out
 
+# Ignite files
+ignite
+
 #idea files
 *.iml
 .idea
