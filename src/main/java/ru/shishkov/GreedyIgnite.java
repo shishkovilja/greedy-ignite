@@ -32,7 +32,7 @@ import static org.apache.ignite.internal.processors.cache.persistence.tree.io.Pa
 /**
  * Test is developed to check Apache Ignite behaviour when it uses memory more than operating system has.
  */
-public class IgniteMemoryOvercommitTest {
+public class GreedyIgnite {
     public static final String STOMACH_CACHE = "stomach";
     private double initMemRatio;
     private double maxMemRatio;
@@ -40,13 +40,13 @@ public class IgniteMemoryOvercommitTest {
     private long maxMemSz;
     private long maxPagesNum;
 
-    public IgniteMemoryOvercommitTest() {
+    public GreedyIgnite() {
         processSystemProps();
         initMemVals();
     }
 
     public static void main(String[] args) {
-        Thread.currentThread().setName(IgniteMemoryOvercommitTest.class.getSimpleName());
+        Thread.currentThread().setName(GreedyIgnite.class.getSimpleName());
         doTest();
     }
 
@@ -55,7 +55,7 @@ public class IgniteMemoryOvercommitTest {
      */
     // TODO Remove forcing of checkpoint
     private static void doTest() {
-        IgniteMemoryOvercommitTest overcommitTest = new IgniteMemoryOvercommitTest();
+        GreedyIgnite overcommitTest = new GreedyIgnite();
         Ignite ignite = overcommitTest.startIgnite();
 
         try {
@@ -71,8 +71,8 @@ public class IgniteMemoryOvercommitTest {
 //            ignite.log().info("Forcing checkpoint after all");
 //            GridCacheDatabaseSharedManager db = (GridCacheDatabaseSharedManager)igniteEx.context()
 //                .cache().context().database();
-//            db.waitForCheckpoint("Hungry test");
-//            ignite.log().info("Hungry test finished with checkpoint correctly");
+//            db.waitForCheckpoint("Greedy test");
+//            ignite.log().info("Greedy test finished with checkpoint correctly");
         }
         catch (IgniteCheckedException e) {
             e.printStackTrace();
@@ -208,7 +208,7 @@ public class IgniteMemoryOvercommitTest {
         PageMemoryEx pageMemEx = (PageMemoryEx)pageMem;
         IgniteLogger log = ignite.log();
 
-        logSummary(log, "Started hungry eating, trying to eat %d pages", maxPagesNum);
+        logSummary(log, "Started greedy eating, trying to eat %d pages", maxPagesNum);
 
         byte[] payload = new byte[DFLT_PAGE_SIZE - MIN_DATA_PAGE_OVERHEAD];
         long s = Math.round(subtotalsPercent / 100 * maxPagesNum);
@@ -223,7 +223,7 @@ public class IgniteMemoryOvercommitTest {
             }
         }
 
-        logSummary(log, "Hungry eating finished, eaten pages: %d/%d (%.1f%%). Loaded pages in PageMemory: %d",
+        logSummary(log, "Greedy eating finished, eaten pages: %d/%d (%.1f%%). Loaded pages in PageMemory: %d",
             (l - 1), maxPagesNum, 100.0 * (l - 1) / maxPagesNum, pageMemEx.loadedPages());
     }
 
@@ -279,7 +279,7 @@ public class IgniteMemoryOvercommitTest {
 
             IgniteLogger log = ignite.log();
 
-            logSummary(log, "Started hungry filling, trying to put %d payloads", maxPagesNum);
+            logSummary(log, "Started greedy filling, trying to put %d payloads", maxPagesNum);
 
             long s = Math.round(subtotalsPercent / 100 * maxPagesNum);
             long l;
@@ -292,7 +292,7 @@ public class IgniteMemoryOvercommitTest {
                 }
             }
 
-            logSummary(log, "Hungry filling finished, put payloads: %d/%d (%.1f%%). Loaded pages in PageMemory: %d",
+            logSummary(log, "Greedy filling finished, put payloads: %d/%d (%.1f%%). Loaded pages in PageMemory: %d",
                 (l - 1), maxPagesNum, 100.0 * (l - 1) / maxPagesNum, pageMem.loadedPages());
         }
     }
