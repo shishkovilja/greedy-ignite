@@ -36,8 +36,8 @@ public class GreedyIgnite {
     public static final String STOMACH_CACHE = "stomach";
     private double initMemRatio;
     private double maxMemRatio;
-    private long initMemSz;
-    private long maxMemSz;
+    private long initDataRegionSz;
+    private long maxDataRegionSz;
     private long maxPagesNum;
 
     public GreedyIgnite() {
@@ -64,7 +64,7 @@ public class GreedyIgnite {
             PageMemory pageMem = igniteEx.context().cache().context().database()
                 .dataRegion("default").pageMemory();
 
-            overcommitTest.startFilling(ignite, pageMem, 10.0);
+            overcommitTest.startFilling(ignite, pageMem, 1.0);
 
 //            overcommitTest.startEating(ignite, pageMem, 1.0);
 
@@ -128,10 +128,10 @@ public class GreedyIgnite {
         // + additional TxLog region, see MvccProcessorImpl#createTxLogRegion max size equal to DFLT_SYS_REG_MAX_SIZE
         long freeMem = freeOsMem - offheapMaxSize - DFLT_SYS_REG_MAX_SIZE * 2;
 
-        initMemSz = Math.round(freeMem * initMemRatio / 100);
-        maxMemSz = Math.round(freeMem * maxMemRatio / 100);
+        initDataRegionSz = Math.round(freeMem * initMemRatio / 100);
+        maxDataRegionSz = Math.round(freeMem * maxMemRatio / 100);
 
-        maxPagesNum = maxMemSz / DFLT_PAGE_SIZE;
+        maxPagesNum = maxDataRegionSz / DFLT_PAGE_SIZE;
     }
 
     /**
@@ -163,7 +163,7 @@ public class GreedyIgnite {
     // TODO Ignite should be configured via XML, because of it's greater durability
     @Deprecated
     private IgniteConfiguration getIgniteCfg() {
-        if (initMemSz <= 0 || maxMemSz <= 0)
+        if (initDataRegionSz <= 0 || maxDataRegionSz <= 0)
             throw new IllegalArgumentException("Max or min memory size should be more then zero");
 
         IgniteLogger log = null;
@@ -180,8 +180,8 @@ public class GreedyIgnite {
 // TODO Add options (properties) to turn on/off persistence
 //            .setPersistenceEnabled(true)
 
-            .setInitialSize(initMemSz)
-            .setMaxSize(maxMemSz)
+            .setInitialSize(initDataRegionSz)
+            .setMaxSize(maxDataRegionSz)
             .setPageEvictionMode(DataPageEvictionMode.RANDOM_LRU);
 
         TcpDiscoverySpi spi = new TcpDiscoverySpi();
@@ -292,7 +292,8 @@ public class GreedyIgnite {
                 }
             }
 
-            logSummary(log, "Greedy filling finished, put payloads: %d/%d (%.1f%%). Loaded pages in PageMemory: %d",
+            logSummary(log,
+                "Greedy filling finished, put payloads: %d/%d (%.1f%%). Loaded pages in PageMemory: %d",
                 (l - 1), maxPagesNum, 100.0 * (l - 1) / maxPagesNum, pageMem.loadedPages());
         }
     }
@@ -305,7 +306,7 @@ public class GreedyIgnite {
      * @param msgElements element print to
      */
     private void logSummary(IgniteLogger log, String msg, Object... msgElements) {
-        log.warning(getClass().getSimpleName(), String.format(msg, msgElements), null);
+        log.warning(String.format(msg, msgElements));
         logMemUsage(log);
     }
 
@@ -325,9 +326,15 @@ public class GreedyIgnite {
         long usedOsMem = totalOsMem - osMXBean.getFreePhysicalMemorySize();
         double osMemUsagePercent = 100.0 * usedOsMem / totalOsMem;
 
-        log.info(getClass().getSimpleName(),
-            String.format("Heap usage: %d/%d (%.1f%%). OS memory usage: %d/%d (%.1f%%)",
+        long totalSwapSize = osMXBean.getTotalSwapSpaceSize();
+        long freeSwapSize = osMXBean.getFreeSwapSpaceSize();
+        long usedSwapSize = totalSwapSize - freeSwapSize;
+        double usedSwapPercent = 100.0 * usedSwapSize / totalSwapSize;
+
+        log.warning(
+            String.format("Heap usage: %d/%d (%.1f%%). OS memory usage: %d/%d (%.1f%%). Swap usage: %d/%d (%.1f%%)",
                 heapUsedMem, heapMaxMem, heapUsagePercent,
-                usedOsMem, totalOsMem, osMemUsagePercent));
+                usedOsMem, totalOsMem, osMemUsagePercent,
+                usedSwapSize, totalSwapSize, usedSwapPercent));
     }
 }
