@@ -164,6 +164,7 @@ public class GreedyIgnite {
      * @return prepared {@link IgniteConfiguration}
      */
     // TODO Ignite should be configured via XML, because of it's greater durability
+    // TODO Create suitable beans for XML configuration
     @Deprecated
     private IgniteConfiguration getIgniteCfg() {
         if (initDataRegionSz <= 0 || maxDataRegionSz <= 0)
