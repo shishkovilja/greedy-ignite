@@ -33,7 +33,7 @@ import static org.apache.ignite.internal.processors.cache.persistence.tree.io.Pa
  * Test is developed to check Apache Ignite behaviour when it uses memory more than operating system has.
  */
 public class GreedyIgnite {
-    public static final String STOMACH_CACHE = "stomach";
+    private static final String STOMACH_CACHE = "stomach";
     private double initMemRatio;
     private double maxMemRatio;
     private long initDataRegionSz;
@@ -120,14 +120,17 @@ public class GreedyIgnite {
     private void initMemVals() {
         long freeOsMem = ((OperatingSystemMXBean)ManagementFactory.getOperatingSystemMXBean())
             .getFreePhysicalMemorySize();
-        long offheapMaxSize = Runtime.getRuntime().maxMemory();
+//        long heapMaxSize = Runtime.getRuntime().maxMemory();
+        long heapMaxSize = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax();
 
         // See max size of SysCache in DataStorageConfiguration#DFLT_SYS_REG_MAX_SIZE
         long DFLT_SYS_REG_MAX_SIZE = 100L * 1024 * 1024;
 
+        // TODO Warning about max heap size bigger than free OS mem
         // + additional TxLog region, see MvccProcessorImpl#createTxLogRegion max size equal to DFLT_SYS_REG_MAX_SIZE
-        long freeMem = freeOsMem - offheapMaxSize - DFLT_SYS_REG_MAX_SIZE * 2;
+        long freeMem = freeOsMem - heapMaxSize - DFLT_SYS_REG_MAX_SIZE * 2;
 
+        // TODO init and max comparisons
         initDataRegionSz = Math.round(freeMem * initMemRatio / 100);
         maxDataRegionSz = Math.round(freeMem * maxMemRatio / 100);
 
@@ -164,7 +167,7 @@ public class GreedyIgnite {
     @Deprecated
     private IgniteConfiguration getIgniteCfg() {
         if (initDataRegionSz <= 0 || maxDataRegionSz <= 0)
-            throw new IllegalArgumentException("Max or min memory size should be more then zero");
+            throw new IllegalArgumentException("Max or init memory size should be more then zero");
 
         IgniteLogger log = null;
         try {
