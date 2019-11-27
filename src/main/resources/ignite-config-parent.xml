@@ -17,37 +17,49 @@
   limitations under the License.
 -->
 
-<!-- TODO Add MXMemoryBean and OSMemoryBean to calculate DataRegion sizes -->
-<!-- TODO Add Cache setup and creation if needed-->
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans
                             http://www.springframework.org/schema/beans/spring-beans.xsd">
 
-    <bean id="parent.cfg" class="org.apache.ignite.configuration.IgniteConfiguration">
-        <property name="dataStorageConfiguration">
-            <bean class="org.apache.ignite.configuration.DataStorageConfiguration">
-                <property name="defaultDataRegionConfiguration">
-                    <bean class="org.apache.ignite.configuration.DataRegionConfiguration">
-                        <property name="persistenceEnabled" value="#{ systemProperties['persistence'] }" />
-                        <property name="initialSize" value="#{ systemProperties['init.size'] }" />
-                        <property name="maxSize" value="#{ systemProperties['max.size'] }" />
-                        <property name="pageEvictionMode" value="RANDOM_LRU" />
-                    </bean>
-                </property>
+    <bean abstract="true" id="parent.cfg" class="org.apache.ignite.configuration.IgniteConfiguration">
+        <property name="cacheConfiguration">
+            <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                <property name="name" value="#{ systemProperties['stomach.cache'] ?: 'stomach'}" />
             </bean>
         </property>
 
         <property name="discoverySpi">
             <bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi">
                 <property name="localAddress" value="127.0.0.1" />
+                <property name="localPort" value="30000"/>
+                <property name="localPortRange" value="20"/>
+
+                <property name="ipFinder">
+                    <bean class="org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder">
+                        <property name="addresses">
+                            <list>
+                                <value>127.0.0.1:30000..30020</value>
+                            </list>
+                        </property>
+                    </bean>
+                </property>
             </bean>
         </property>
 
-        <property name="gridLogger">
-            <bean class="org.apache.ignite.logger.log4j.Log4JLogger">
-                <constructor-arg type="java.lang.String" value="log4j.xml" />
+        <property name="communicationSpi">
+            <bean class="org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi">
+                <property name="localAddress" value="127.0.0.1"/>
+                <property name="localPort" value="40000"/>
             </bean>
         </property>
+
+        <property name="gridLogger" ref="log4JLogger" />
+    </bean>
+
+    <bean id="resourceResolver" class="org.springframework.core.io.support.PathMatchingResourcePatternResolver" />
+
+    <bean id="log4JLogger" class="org.apache.ignite.logger.log4j.Log4JLogger">
+        <constructor-arg type="java.net.URL" value="#{ resourceResolver.getResource('log4j.xml').URL }"/>
     </bean>
 </beans>
