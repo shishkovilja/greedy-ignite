@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.ImportResource;
 import ru.shishkov.config.util.GreedyProperties;
-import ru.shishkov.config.util.Utilz;
+import ru.shishkov.config.util.Util;
 
 @Configuration
-@ImportResource("classpath:ignite-config-server.xml")
+@ImportResource("classpath:config/ignite-config-server.xml")
 @Import({ParentConfig.class})
 public class ServerConfig {
     @Autowired
@@ -22,14 +22,13 @@ public class ServerConfig {
     IgniteLogger log;
 
     @Bean
-    public Long regionSize(OperatingSystemMXBean osMxBean, MemoryMXBean memMxBean) {
+    public Long alternateRegionSize(OperatingSystemMXBean osMxBean, MemoryMXBean memMxBean) {
         long regSz = 0;
 
         try {
-            regSz = Utilz.estimateDataRegionSize(
-                Utilz.availableMemory(osMxBean, memMxBean),
-                props.getEatRatioProp(),
-                props.getEatSizeProp());
+            regSz = Util.alternateDataRegionSize(
+                Util.availableMemoryForDataRegion(osMxBean, memMxBean),
+                props);
         }
         catch (Exception e) {
             log.error("Region size estimation error", e);

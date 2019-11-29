@@ -7,7 +7,7 @@ import org.springframework.context.annotation.ImportResource;
 import ru.shishkov.config.util.GreedyProperties;
 
 @Configuration
-@ImportResource("classpath:ignite-config-client.xml")
+@ImportResource("classpath:config/ignite-config-client.xml")
 @Import({ParentConfig.class})
 public class ClientConfig {
 

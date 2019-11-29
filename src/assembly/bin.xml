@@ -9,19 +9,41 @@
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
+        <!-- Copy project Jar File -->
+        <!--        <fileSet>-->
+        <!--            <outputDirectory>/</outputDirectory>-->
+        <!--            <directory>target</directory>-->
+        <!--            <includes>-->
+        <!--                <include>${project.artifactId}-${project.version}.jar</include>-->
+        <!--            </includes>-->
+        <!--        </fileSet>-->
+
+        <!-- Copy shell scripts into assembly -->
         <fileSet>
-            <outputDirectory>/</outputDirectory>
-            <directory>target</directory>
+            <outputDirectory>/bin</outputDirectory>
+            <directory>/bin</directory>
+        </fileSet>
+
+        <!-- Copy Spring XML configs -->
+        <fileSet>
+            <outputDirectory>/config</outputDirectory>
+            <directory>target/config</directory>
             <includes>
-                <include>${project.artifactId}-${project.version}.jar</include>
                 <include>ignite-config*.xml</include>
             </includes>
         </fileSet>
+
+        <!-- Create empty directory for logs -->
+        <!--        <fileSet>-->
+        <!--            <outputDirectory>logs</outputDirectory>-->
+        <!--            <excludes><exclude>**/*</exclude></excludes>-->
+        <!--        </fileSet>-->
     </fileSets>
+
     <dependencySets>
         <dependencySet>
             <outputDirectory>/lib</outputDirectory>
-            <useProjectArtifact>false</useProjectArtifact>
+            <!--            <useProjectArtifact>false</useProjectArtifact>-->
             <unpack>false</unpack>
         </dependencySet>
     </dependencySets>

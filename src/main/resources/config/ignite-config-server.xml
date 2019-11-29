@@ -31,8 +31,8 @@
                 <property name="defaultDataRegionConfiguration">
                     <bean class="org.apache.ignite.configuration.DataRegionConfiguration">
                         <property name="persistenceEnabled" value="#{ new Boolean(systemProperties['persistence'] ?: false) }" />
-                        <property name="initialSize" value="#{ systemProperties['eat.size'] ?: regionSize }" />
-                        <property name="maxSize" value="#{ systemProperties['eat.size'] ?: regionSize }" />
+                        <property name="initialSize" value="#{ systemProperties['eat.size'] ?: alternateRegionSize }"/>
+                        <property name="maxSize" value="#{ systemProperties['eat.size'] ?: alternateRegionSize }"/>
                         <property name="pageEvictionMode" value="RANDOM_LRU" />
                     </bean>
                 </property>

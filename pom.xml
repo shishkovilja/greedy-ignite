@@ -86,16 +86,16 @@
                         <manifest>
                             <mainClass>ru.shishkov.GreedyIgnite</mainClass>
                             <addClasspath>true</addClasspath>
-                            <classpathPrefix>lib/</classpathPrefix>
+                            <classpathPrefix>../lib/</classpathPrefix>
                         </manifest>
                         <manifestEntries>
-                            <Class-Path>.</Class-Path>
+                            <Class-Path>..</Class-Path>
                         </manifestEntries>
                     </archive>
                 </configuration>
             </plugin>
 
-            <!-- Copy ignite XML configuration files into target directory before project assemby into zip file -->
+            <!-- Copy ignite XML configuration files into target/config directory before assemblying project into zip file -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
@@ -108,10 +108,10 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${basedir}/target</outputDirectory>
+                            <outputDirectory>${basedir}/target/config</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>${project.build.sourceDirectory}/../resources</directory>
+                                    <directory>${project.build.sourceDirectory}/../resources/config</directory>
                                     <includes>
                                         <include>ignite-config*.xml</include>
                                     </includes>

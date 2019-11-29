@@ -19,6 +19,13 @@ import static org.apache.ignite.internal.processors.cache.persistence.tree.io.Ab
  */
 @Component
 public class HungryJob {
+    // TODO Add autocalculation for KB, MB, GB, TB etc.
+    public static final long GIGABYTE = 1L << 30;
+
+    public static final int MIN_SLEEP_DURATION = 15;
+
+    public static final long BYTES_BETWEEN_LAZY_SLEEPS = 1L << 28;
+
     @Autowired
     private Ignite ignite;
 
@@ -53,31 +60,67 @@ public class HungryJob {
     public void performJob() {
         try (IgniteDataStreamer<Long, byte[]> streamer = ignite.dataStreamer(props.getStomachCacheName())) {
             // Payload sized with possible overhead
-            byte[] payload = new byte[DFLT_PAGE_SIZE - MIN_DATA_PAGE_OVERHEAD - 200];
+            int payloadSz = DFLT_PAGE_SIZE - MIN_DATA_PAGE_OVERHEAD - 200;
+            byte[] payload = new byte[payloadSz];
 
             long drSize = ignite.configuration()
                 .getDataStorageConfiguration()
                 .getDefaultDataRegionConfiguration()
                 .getMaxSize();
-            long maxPagesNum = drSize / DFLT_PAGE_SIZE;
+
+            double gigabytesInPage = (double)DFLT_PAGE_SIZE / GIGABYTE;
+            long pagesNum = drSize / DFLT_PAGE_SIZE;
+            long totalPutVolume = Math.round(pagesNum * gigabytesInPage);
+
+            long subtotalsStep = Math.round(props.getSubtotalsPercent() / 100.0 * pagesNum);
+            long payloadsBetweenSleeps = BYTES_BETWEEN_LAZY_SLEEPS / payloadSz;
 
             log.warning("These properties used for new greedy test: " + props);
-            logSummary("Started greedy filling, trying to put %d payloads into DefaultDataRegion with size %dGB",
-                maxPagesNum, drSize / 1024 / 1024 / 1024);
+            logSummary("Started greedy filling, trying to put %d payloads, total used memory should be %dGB",
+                pagesNum, totalPutVolume);
 
-            long s = Math.round(props.getSubtotalsPercent() / 100 * maxPagesNum);
-            long l;
-            for (l = 1; l <= maxPagesNum; l++) {
-                streamer.addData(l, payload);
+            long startMillis = System.currentTimeMillis();
+            long previousStartMillis = startMillis;
+            long sleepPausesCount = 0;
+            long activeIntervalsSum = 0;
 
-                if (l % s == 0) {
-                    logSummary("Put payloads: %d/%d (%.1f%%)",
-                        l, maxPagesNum, 100.0 * l / maxPagesNum);
+            long payloadsCount;
+
+            for (payloadsCount = 1; payloadsCount <= pagesNum; payloadsCount++) {
+                streamer.addData(payloadsCount, payload);
+
+                if (payloadsCount % subtotalsStep == 0) {
+                    double progressPercent = 100.0 * payloadsCount / pagesNum;
+                    long putVolume = Math.round(payloadsCount * gigabytesInPage);
+
+                    logSummary("Put payloads: %d(~%dGB)/%d(~%dGB) (%.1f%%)",
+                        payloadsCount, putVolume, pagesNum, totalPutVolume, progressPercent);
+                }
+
+                // Sleep in case of lazy mode
+                if (props.getLaziness() > 1.0 && payloadsCount % payloadsBetweenSleeps == 0) {
+                    long currentJobDuration = System.currentTimeMillis() - previousStartMillis;
+                    long avgJobDuration = (currentJobDuration + activeIntervalsSum) / (sleepPausesCount + 1);
+
+                    long currentSleepDuration = Math.round(avgJobDuration * (props.getLaziness() - 1.0));
+
+                    if (currentSleepDuration >= MIN_SLEEP_DURATION) {
+                        Thread.sleep(currentSleepDuration);
+
+                        sleepPausesCount++;
+                        activeIntervalsSum += currentJobDuration;
+
+                        previousStartMillis = System.currentTimeMillis();
+                    }
                 }
             }
 
-            logSummary("Greedy filling finished, put payloads: %d/%d (%.1f%%)",
-                (l - 1), maxPagesNum, 100.0 * (l - 1) / maxPagesNum);
+            double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
+
+            long putVolume = Math.round((payloadsCount - 1) * gigabytesInPage);
+
+            logSummary("Greedy filling finished in %.2f seconds, put payloads: %d(~%dGB)/%d(~%dGB)",
+                durationSeconds, payloadsCount - 1, putVolume, pagesNum, totalPutVolume);
         }
         catch (Exception e) {
             log.error("Hungry Job Error", e);

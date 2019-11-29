@@ -3,43 +3,54 @@ package ru.shishkov.config.util;
 import org.springframework.beans.factory.annotation.Value;
 
 public class GreedyProperties {
-    @Value("${eat.ratio:50.0}")
-    private Double eatRatioProp;
+    @Value("${eat.ratio:0.0}")
+    private Double eatRatio;
 
     @Value("${eat.size:0}")
-    private Long eatSizeProp;
+    private Long eatSz;
 
-    @Value("${eat.lazy:false}")
-    private Boolean isEatLazy;
+    @Value("${laziness:0.0}")
+    private Double laziness;
+
+    @Value("${over.eat.size:-1}")
+    private Long overEatSz;
 
     @Value("${stomach.cache:stomach}")
     private String stomachCacheName;
 
-    @Value("${subtotals.percent:1.0}")
+    @Value("${subtotals.percent:10.0}")
     private Double subtotalsPercent;
 
-    public Double getEatRatioProp() {
-        return eatRatioProp;
+    public Double getEatRatio() {
+        return eatRatio;
     }
 
-    public void setEatRatioProp(Double eatRatioProp) {
-        this.eatRatioProp = eatRatioProp;
+    public void setEatRatio(Double eatRatio) {
+        this.eatRatio = eatRatio;
     }
 
-    public Long getEatSizeProp() {
-        return eatSizeProp;
+    public Long getEatSz() {
+        return eatSz;
     }
 
-    public void setEatSizeProp(Long eatSizeProp) {
-        this.eatSizeProp = eatSizeProp;
+    public void setEatSz(Long eatSz) {
+        this.eatSz = eatSz;
     }
 
-    public Boolean getEatLazy() {
-        return isEatLazy;
+    public Double getLaziness() {
+        return laziness;
     }
 
-    public void setEatLazy(Boolean eatLazy) {
-        isEatLazy = eatLazy;
+    public void setLaziness(Double laziness) {
+        this.laziness = laziness;
+    }
+
+    public Long getOverEatSz() {
+        return overEatSz;
+    }
+
+    public void setOverEatSz(Long overEatSz) {
+        this.overEatSz = overEatSz;
     }
 
     public String getStomachCacheName() {
@@ -60,9 +71,10 @@ public class GreedyProperties {
 
     @Override public String toString() {
         return "GreedyProperties{" +
-            "eatRatioProp=" + eatRatioProp +
-            ", eatSizeProp=" + eatSizeProp +
-            ", isEatLazy=" + isEatLazy +
+            "eatRatio=" + eatRatio +
+            ", eatSz=" + eatSz +
+            ", lazyness=" + laziness +
+            ", overEatSz=" + overEatSz +
             ", stomachCacheName='" + stomachCacheName + '\'' +
             ", subtotalsPercent=" + subtotalsPercent +
             '}';
