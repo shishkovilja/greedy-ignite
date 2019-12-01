@@ -69,14 +69,15 @@ public class GreedyProperties {
         this.subtotalsPercent = subtotalsPercent;
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return "GreedyProperties{" +
-            "eatRatio=" + eatRatio +
-            ", eatSz=" + eatSz +
-            ", lazyness=" + laziness +
-            ", overEatSz=" + overEatSz +
-            ", stomachCacheName='" + stomachCacheName + '\'' +
-            ", subtotalsPercent=" + subtotalsPercent +
-            '}';
+                "eatRatio=" + eatRatio +
+                ", eatSz=" + eatSz +
+                ", laziness=" + laziness +
+                ", overEatSz=" + overEatSz +
+                ", stomachCacheName='" + stomachCacheName + '\'' +
+                ", subtotalsPercent=" + subtotalsPercent +
+                '}';
     }
 }
