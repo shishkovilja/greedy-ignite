@@ -81,34 +81,34 @@ public class HungryJob {
 
             long startMillis = System.currentTimeMillis();
             long previousStartMillis = startMillis;
-            long sleepPausesCount = 0;
+            long sleepPausesCnt = 0;
             long activeIntervalsSum = 0;
 
-            long payloadsCount;
+            long payloadsCnt;
 
-            for (payloadsCount = 1; payloadsCount <= pagesNum; payloadsCount++) {
-                streamer.addData(payloadsCount, payload);
+            for (payloadsCnt = 1; payloadsCnt <= pagesNum; payloadsCnt++) {
+                streamer.addData(payloadsCnt, payload);
 
-                if (payloadsCount % subtotalsStep == 0) {
-                    double progressPercent = 100.0 * payloadsCount / pagesNum;
-                    long putVolume = Math.round(payloadsCount * gigabytesInPage);
+                if (payloadsCnt % subtotalsStep == 0) {
+                    double progressPercent = 100.0 * payloadsCnt / pagesNum;
+                    long putVolume = Math.round(payloadsCnt * gigabytesInPage);
 
                     logSummary("Put payloads: %d(~%dGB)/%d(~%dGB) (%.1f%%)",
-                        payloadsCount, putVolume, pagesNum, totalPutVolume, progressPercent);
+                            payloadsCnt, putVolume, pagesNum, totalPutVolume, progressPercent);
                 }
 
                 // Sleep in case of lazy mode
-                if (props.getLaziness() > 1.0 && payloadsCount % payloadsBetweenSleeps == 0) {
-                    long currentJobDuration = System.currentTimeMillis() - previousStartMillis;
-                    long avgJobDuration = (currentJobDuration + activeIntervalsSum) / (sleepPausesCount + 1);
+                if (props.getLaziness() > 1.0 && payloadsCnt % payloadsBetweenSleeps == 0) {
+                    long curJobDuration = System.currentTimeMillis() - previousStartMillis;
+                    long avgJobDuration = (curJobDuration + activeIntervalsSum) / (sleepPausesCnt + 1);
 
-                    long currentSleepDuration = Math.round(avgJobDuration * (props.getLaziness() - 1.0));
+                    long curSleepDuration = Math.round(avgJobDuration * (props.getLaziness() - 1.0));
 
-                    if (currentSleepDuration >= MIN_SLEEP_DURATION) {
-                        Thread.sleep(currentSleepDuration);
+                    if (curSleepDuration >= MIN_SLEEP_DURATION) {
+                        Thread.sleep(curSleepDuration);
 
-                        sleepPausesCount++;
-                        activeIntervalsSum += currentJobDuration;
+                        sleepPausesCnt++;
+                        activeIntervalsSum += curJobDuration;
 
                         previousStartMillis = System.currentTimeMillis();
                     }
@@ -117,10 +117,10 @@ public class HungryJob {
 
             double durationSeconds = (System.currentTimeMillis() - startMillis) / 1000.0;
 
-            long putVolume = Math.round((payloadsCount - 1) * gigabytesInPage);
+            long putVolume = Math.round((payloadsCnt - 1) * gigabytesInPage);
 
             logSummary("Greedy filling finished in %.2f seconds, put payloads: %d(~%dGB)/%d(~%dGB)",
-                durationSeconds, payloadsCount - 1, putVolume, pagesNum, totalPutVolume);
+                durationSeconds, payloadsCnt - 1, putVolume, pagesNum, totalPutVolume);
         }
         catch (Exception e) {
             log.error("Hungry Job Error", e);
