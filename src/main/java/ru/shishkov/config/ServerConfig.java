@@ -13,15 +13,25 @@ import org.springframework.context.annotation.ImportResource;
 import ru.shishkov.config.util.GreedyProperties;
 
 // TODO available size should take into account NON-DEFAULT values of internal ignite variables (system and TxRegion, etc.)
+/**
+ * Server configuration bean. Import of external XML is used.
+ */
 @Configuration
 @ImportResource("classpath:config/ignite-config-server.xml")
 @Import({ParentConfig.class})
 public class ServerConfig {
+    /** Logger. */
     @Autowired
     IgniteLogger log;
+
+    /** Properties. */
     @Autowired
     private GreedyProperties props;
 
+    /**
+     * @param osMxBean Os mx bean.
+     * @param memMxBean Mem mx bean.
+     */
     @Bean
     public Long alternateRegionSize(OperatingSystemMXBean osMxBean, MemoryMXBean memMxBean) {
         Optional<Long> regSz = Optional.empty();
@@ -68,8 +78,9 @@ public class ServerConfig {
         long availMem = Math.round((freeOsMem - heapMemUsage.getMax() - DFLT_SYS_REG_MAX_SIZE * 2) /
             evictionThreshold);
 
-        if (availMem < 0)
-            throw new IllegalStateException("Heap max size (Xmx) should be less than free OS memory to more than 200MB");
+        if (availMem <= 0)
+            throw new IllegalStateException(String.format("Heap max size (Xmx) should be less than free OS memory to" +
+                    " more than 200MB: heap max size: %d, free OS memory: %d", heapMemUsage.getMax(), freeOsMem));
 
         double eatRatio = props.getEatRatio();
 
@@ -81,8 +92,10 @@ public class ServerConfig {
             if (eatThreshold > totalOsMem - availMem)
                 retVal = Optional.of(eatThreshold - (totalOsMem - availMem));
             else
-                throw new IllegalArgumentException(String.format("'eat.ratio' is too low, so memory amount %d that should be eaten " +
-                    "is less than used memory in OS: %d", eatThreshold, totalOsMem - availMem));
+                throw new IllegalArgumentException(String.format("'eat.ratio' is too low, so memory amount %dMB that " +
+                        "should be eaten is less than used memory in OS: %dMB (heap included: %dMB)",
+                        eatThreshold / (1 << 20), (totalOsMem - availMem) / (1 << 20),
+                        heapMemUsage.getMax() / (1 << 20)));
         }
         else if (overEatTotal >= availMem)
             retVal = Optional.of(overEatTotal);
