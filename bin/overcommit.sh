@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-IGNITE_HOME=`dirname $(dirname $0)\..`
+IGNITE_HOME=$(dirname "$(dirname "$0")")
 
 #echo $(env | grep IGNITE_HOME)
 
@@ -26,11 +26,11 @@ echo -e   "| Total swap size:\t$(free | grep -i swap | awk '{ print $2 }')\t\t\t
 echo -e "+-------------------------------------------------------+\n"
 
 WORK_DIR=$IGNITE_HOME/work
-if ! [ -d $WORK_DIR ]; then
-    mkdir $WORK_DIR
+if ! [ -d "$WORK_DIR" ]; then
+    mkdir "$WORK_DIR"
 fi
 
-java $JVM_OPTS -jar $IGNITE_HOME/lib/greedy-ignite-0.0.1-SNAPSHOT.jar > /dev/null 2> $IGNITE_HOME/overcommit.sh.err &
+java $JVM_OPTS -jar "$IGNITE_HOME"/lib/greedy-ignite-0.0.1-SNAPSHOT.jar > /dev/null 2> "$IGNITE_HOME"/overcommit.sh.err &
 
 PID=$!
 echo -e "PID of greedy-ingite:\n$PID"
