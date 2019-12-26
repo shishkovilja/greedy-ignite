@@ -26,6 +26,7 @@
         <property name="cacheConfiguration">
             <bean class="org.apache.ignite.configuration.CacheConfiguration">
                 <property name="name" value="#{ systemProperties['stomach.cache'] ?: 'stomach'}" />
+                <property name="cacheMode" value="LOCAL" />
             </bean>
         </property>
 
