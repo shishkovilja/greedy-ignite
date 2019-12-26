@@ -5,7 +5,7 @@
           xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.0.0 http://maven.apache.org/xsd/assembly-2.0.0.xsd">
     <id>bin</id>
     <formats>
-        <format>zip</format>
+        <format>tar.gz</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
@@ -20,8 +20,12 @@
 
         <!-- Copy shell scripts into assembly -->
         <fileSet>
-            <outputDirectory>/bin</outputDirectory>
             <directory>/bin</directory>
+            <outputDirectory>/bin</outputDirectory>
+            <includes>
+                <include>*.sh</include>
+            </includes>
+            <fileMode>0755</fileMode>
         </fileSet>
 
         <!-- Copy Spring XML configs -->
