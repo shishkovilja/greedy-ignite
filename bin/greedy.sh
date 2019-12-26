@@ -23,14 +23,22 @@ echo -e   "| vm.overcommit_memory:\t$(cat /proc/sys/vm/overcommit_memory)\t\t\t\
 echo -e   "| vm.overcommit_ratio:\t$(cat /proc/sys/vm/overcommit_ratio)\t\t\t\t|"
 echo -e   "| vm.swappiness:\t$(cat /proc/sys/vm/swappiness)\t\t\t\t|"
 echo -e   "| Total swap size:\t$(free | grep -i swap | awk '{ print $2 }')\t\t\t\t|"
-echo -e "+-------------------------------------------------------+\n"
+echo -e   "+-------------------------------------------------------+\n"
 
 WORK_DIR=$IGNITE_HOME/work
 if ! [ -d "$WORK_DIR" ]; then
     mkdir "$WORK_DIR"
 fi
 
-java $JVM_OPTS -jar "$IGNITE_HOME"/lib/greedy-ignite-0.0.1-SNAPSHOT.jar > /dev/null 2> "$IGNITE_HOME"/overcommit.sh.err &
+java $JVM_OPTS -jar "$IGNITE_HOME"/lib/greedy-ignite-0.0.1-SNAPSHOT.jar > /dev/null 2> "$IGNITE_HOME"/greedy"$(date '+%s')".sh.err &
 
 PID=$!
 echo -e "PID of greedy-ingite:\n$PID"
+
+while [ -n "$(pgrep "$PID")" ]; do
+  sleep 1
+done
+
+echo "Greedy-Ignite [PID: $PID] finished"
+
+
