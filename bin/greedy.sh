@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 IGNITE_HOME=$(realpath "$(dirname "$0")"/..)
 
 ERR_FILE="$IGNITE_HOME"/greedy.sh.err
