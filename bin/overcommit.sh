@@ -12,7 +12,7 @@ JAVA=$(type -p java)
 RETCODE=$?
 
 if [ $RETCODE -ne 0 ]; then
-  echo "ERROR: no java found is system. Set up variable properly." 1>&2
+  echo "$(date '+[%F %T]') ERROR: no JAVA found is system. Set up java properly." 1>&2
   exit 1
 fi
 
@@ -28,6 +28,8 @@ EAGER_PROPS="-Deat.ratio=70.0"
 
 LAZY_EXEC="$JAVA $LAZY_PROPS $JVM_OPTS -jar $GREEDY_JAR"
 GREEDY_EXEC="$JAVA $EAGER_PROPS $JVM_OPTS -jar $GREEDY_JAR"
+
+STRESS_EXEC="stress-ng --vm 1 --vm-bytes 70%"
 
 OVERCOMMIT_MEMORY=$(cat /proc/sys/vm/overcommit_memory)
 OVERCOMMIT_RATIO=$(cat /proc/sys/vm/overcommit_ratio)
@@ -46,4 +48,10 @@ echo -e "+-------------------------------------------------------+\n"
 CSV_FILE="$IGNITE_HOME/overcommit-om_$OVERCOMMIT_MEMORY-or_$OVERCOMMIT_RATIO-sws_$SWAPINESS-swp_$SWAP.csv"
 echo "Test name;Iteration started;Iteration finished;Iteration duration;Instance name;Survived;Instance PID;Command line;Instance started" >>"$CSV_FILE"
 
-lazy_then_greedy "$LAZY_EXEC" "$GREEDY_EXEC" 5
+ITERS_CNT=5
+ITER_TIMEOUT=60
+LONG_ITERTIMEOUT=300
+
+lazy_then_greedy "$LAZY_EXEC" "$GREEDY_EXEC"
+
+lazy_then_stress "$LAZY_EXEC" "$STRESS_EXEC"

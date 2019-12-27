@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Each iteration timeout
-ITER_TIMEOUT=60
 
 #vmstat delay and count
 VMSTAT_DELAY=2
@@ -67,10 +65,9 @@ first_then_second() {
   local FIRST_NAME="$2"
   local SECOND="$3"
   local SECOND_NAME="$4"
-  local ITERS=$5
-  local TEST_NAME=$6
+  local TEST_NAME=$5
 
-  for ((i = 1; i < ITERS; i++)); do
+  for ((i = 1; i <= ITERS_CNT; i++)); do
     FIRST_PID=-1
     SECOND_PID=-1
 
@@ -82,7 +79,7 @@ first_then_second() {
     local ITERATION_DURATION
 
     ITERATION_STARTED="$(date '+%F %T')"
-    echo -e "\n[$ITERATION_STARTED] Started test: firstly start $FIRST_NAME and then $SECOND_NAME:\t[iteration #$i]"
+    echo -e "\n[$ITERATION_STARTED] Started iteration: firstly start $FIRST_NAME and then $SECOND_NAME:\t[iteration #$i]"
 
     $FIRST >/dev/null &
     FIRST_PID=$!
@@ -135,13 +132,40 @@ first_then_second() {
     wait
   done
 
-  echo -e "$(date '+[%F %T]') Finished all tests: first $FIRST_NAME and then $SECOND_NAME"
+  echo -e "$(date '+[%F %T]') Finished all iterations: first $FIRST_NAME and then $SECOND_NAME"
+}
+
+check_and_start() {
+  if [[ $ITERS_CNT -gt 0 && $ITER_TIMEOUT -gt 0 ]]; then
+    "$@"
+  else
+#      local TEST_NAME="${@: -1}"
+      echo "$(date '+[%F %T]') WARNING: Test skipped: ${*: -1}, incorrect options: [ITERS_CNT=$ITERS_CNT, ITER_TIMEOUT=$ITER_TIMEOUT]"
+  fi
 }
 
 lazy_then_greedy() {
   local LAZY="$1"
   local GREEDY="$2"
-  local ITERS=$3
 
-  first_then_second "$LAZY" "LAZY IGNITE" "$GREEDY" "GREEDY IGNITE" "$ITERS" "lazy_then_greedy"
+  check_and_start first_then_second "$LAZY" "LAZY IGNITE" "$GREEDY" "GREEDY IGNITE" "$ITERS" "lazy_then_greedy"
+}
+
+lazy_then_stress() {
+  check_stress_ng
+
+  local LAZY="$1"
+  local STRESS="$2"
+
+  check_and_start first_then_second "$LAZY" "LAZY IGNITE" "$STRESS" "STRESS-NG" "$ITERS" "lazy_then_stress"
+}
+
+check_stress_ng() {
+  STRESS=$(type -p stress-ng)
+  RETCODE=$?
+
+  if [ $RETCODE -ne 0 ]; then
+    echo "$(date '+[%F %T]') ERROR: no STRESS-NG in system. Install it properly." 1>&2
+    exit 1
+  fi
 }
