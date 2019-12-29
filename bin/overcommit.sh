@@ -11,21 +11,15 @@ exec 2>>"$ERR_FILE"
 # shellcheck source=bin/include/functions.sh
 . "$IGNITE_HOME/bin/include/functions.sh"
 
+estimate_heap
+
 check_java
 
 check_stress_ng
 
-JVM_OPTS="-DIGNITE_HOME=$IGNITE_HOME -server -Xms256m -Xmx256m -XX:+AlwaysPreTouch -XX:+UseG1GC -XX:+ScavengeBeforeFullGC -XX:+DisableExplicitGC"
-
-GREEDY_PROPS="$JVM_OPTS"
-LAZY_PROPS="-Dlaziness=5.0 $JVM_OPTS"
+JVM_OPTS="-DIGNITE_HOME=$IGNITE_HOME -server ${HEAP_PARAMS} -XX:+AlwaysPreTouch -XX:+UseG1GC -XX:+ScavengeBeforeFullGC -XX:+DisableExplicitGC"
 
 GREEDY_JAR="$IGNITE_HOME/lib/greedy-ignite-0.0.1-SNAPSHOT.jar"
-
-LAZY_EXEC="$LAZY_PROPS $JVM_OPTS -jar $GREEDY_JAR"
-GREEDY_EXEC="$GREEDY_PROPS $JVM_OPTS -jar $GREEDY_JAR"
-
-STRESS_EXEC="$STRESS --vm 1 --vm-bytes"
 
 OVERCOMMIT_MEMORY=$(cat /proc/sys/vm/overcommit_memory)
 OVERCOMMIT_RATIO=$(cat /proc/sys/vm/overcommit_ratio)
@@ -41,36 +35,38 @@ echo -e "| vm.swappiness:\t$SWAPINESS\t\t\t\t|"
 echo -e "| Total swap size:\t$SWAP\t\t\t\t|"
 echo -e "+-------------------------------------------------------+\n"
 
-
 #CSV_FILE="$IGNITE_HOME/overcommit-om_$OVERCOMMIT_MEMORY-or_$OVERCOMMIT_RATIO-sws_$SWAPINESS-swp_$SWAP.csv"
 CSV_FILE="$IGNITE_HOME/overcommit.csv"
 
 if ! [ -f "$CSV_FILE" ]; then
-  echo "Overcommit memory;Overcommit Ratio;Swapiness; Swap;Test name;Iteration started;Iteration finished;Iteration duration;Instance name;Survived;Instance PID;Command line;Instance started" >>"$CSV_FILE"
+  echo "Overcommit memory;Overcommit Ratio;Swapiness; Swap;Test name;Iteration started;Iteration finished;Iteration duration;Instance name;Survived;Instance started;Instance PID;Command line" >>"$CSV_FILE"
 fi
-
-ITERS_CNT=5
-ITER_TIMEOUT=60
 
 trap kill_handler SIGINT SIGTERM
 
-test_lazy 90
+ITERS_CNT=2
+ITER_TIMEOUT=60
 
-test_greedy 90
+INSTANCE_DELAY=1
+VMSTAT_DELAY=3
 
-test_lazy 120
+test_instances "LAZY_90" "$(lazy_instance 90)" "LAZY_90"
 
-test_greedy 120
+test_instances "GREEDY_90" "$(greedy_instance 90)" "GREEDY_90"
 
-lazy_then_greedy 70 70
+test_instances "LAZY_150" "$(lazy_instance 150)" "LAZY_150"
 
-lazy_then_stress 70 70
+test_instances "GREEDY_150" "$(greedy_instance 150)" "GREEDY_150"
 
-greedy_then_stress 70 70
+test_instances "LAZY_THEN_GREEDY" "$(lazy_instance 90 10)" "$(greedy_instance 90)" "LAZY_90_10" "GREEDY_90"
 
-stress_then_greedy 80 80
+test_instances "LAZY_THEN_STRESS" "$(lazy_instance 90)" "$(stress_instance 90)" "LAZY_90" "STRESS_90"
+
+test_instances "GREEDY_THEN_STRESS" "$(greedy_instance 90)" "$(stress_instance 90)" "GREEDY_90" "STRESS_90"
+
+test_instances "STRESS_THEN_GREEDY" "$(stress_instance 90)" "$(greedy_instance 90)" "STRESS_90" "GREEDY_90"
 
 echo -e "\n+-------------------------------------------------------+"
-echo -e   "|\t*** Overcommit-test succesfully finished: ***\t|\n|\t\t\t\t\t\t\t|"
-echo -e   "|\t\tDate: $(date '+%F %T')\t\t|"
-echo -e   "+-------------------------------------------------------+\n"
+echo -e "|\t*** Overcommit-test succesfully finished: ***\t|\n|\t\t\t\t\t\t\t|"
+echo -e "|\t\tDate: $(date '+%F %T')\t\t|"
+echo -e "+-------------------------------------------------------+\n"
