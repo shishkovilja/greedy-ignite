@@ -3,28 +3,7 @@
 # PIDS array
 PIDS=()
 
-kill_handler() {
-  log "Unexpected script termination. Killing child processes..."
-
-  for PID in "${PIDS[@]}"; do
-    log "Killing [PID: $PID]"
-
-    kill "$PID"
-  done
-
-  kill "$VMSTAT_PID"
-
-  wait "${PIDS[@]}" "$VMSTAT_PID"
-
-  log "Child processes killed. Exiting."
-
-  exit 2
-}
-
-function log() {
-  echo -e "$(date '+[%F %T]') $1"
-}
-
+# Start iteration
 function start_iter() {
   PIDS=()
 
@@ -52,11 +31,15 @@ function start_iter() {
     ((ITER_DURATION++))
   done
 
+  #Delay, 'waiting' for release of memory
+  sleep 2
+
   if [ $ITER_DURATION -lt "$ITER_TIMEOUT" ]; then
     PIDS+=("$VMSTAT_PID")
   fi
 }
 
+# Write results to CSV
 function write_csv() {
   local IDX="$1"
   local SURVIVED="$2"
@@ -68,6 +51,7 @@ function write_csv() {
   echo "$COMMON_INFO;${INSTANCES_NAMES[$IDX]};$SURVIVED;${INSTANCES_STARTS[$IDX]};${PIDS[$IDX]};${INSTANCES[IDX]}" >>"$CSV_FILE"
 }
 
+# Finish iteration
 function finish_iter() {
   for ((j = 0; j < INSTANCES_AMOUNT; j++)); do
     if [ -n "$(ps --no-headers "${PIDS[$j]}")" ]; then
@@ -87,6 +71,7 @@ function finish_iter() {
   PIDS=()
 }
 
+# Test instances, first parameter - test name, then instances exec strings should be passed, then instance names should be passed
 function test_instances() {
   PARAMS=("$@")
 
@@ -141,25 +126,29 @@ function test_instances() {
   log "> Finished test: $TEST_NAME\n"
 }
 
+# Get lazy instance exec string, first parameter - eat.ratio, second - laziness
 function lazy_instance() {
   local LAZY_PROP="-Dlaziness="
   if [ -n "$2" ]; then
     LAZY_PROP="${LAZY_PROP}$2"
   else
-    LAZY_PROP="${LAZY_PROP}5.0"
+    LAZY_PROP="${LAZY_PROP}3.0"
   fi
 
   echo "$JAVA -Deat.ratio=$1 $LAZY_PROP $JVM_OPTS -jar $GREEDY_JAR"
 }
 
+# Get greedy instance exec string, first parameter - eat.ratio
 function greedy_instance() {
   echo "$JAVA -Deat.ratio=$1 $JVM_OPTS -jar $GREEDY_JAR"
 }
 
+# Get greedy instance exec string, first parameter - vm-bytes value in percent
 function stress_instance() {
   echo "$STRESS --vm 1 --vm-bytes $1%"
 }
 
+# Check and set path to JAVA
 function check_java() {
   JAVA=$(type -p java)
   RETCODE=$?
@@ -170,6 +159,7 @@ function check_java() {
   fi
 }
 
+# Check and set path to STRESS-NG
 function check_stress_ng() {
   STRESS=$(type -p stress-ng)
   RETCODE=$?
@@ -180,6 +170,7 @@ function check_stress_ng() {
   fi
 }
 
+# Get heap size JVM parameters depending on free memory
 function estimate_heap() {
   FREE_GBYTES=$(free -g | grep -i "mem:" | awk '{ print $4 }')
 
@@ -203,4 +194,83 @@ function estimate_heap() {
   else
     HEAP_PARAMS="-Xms16g -Xmx16g"
   fi
+}
+
+# Kill handler, kills child processes
+function kill_handler() {
+  log "Unexpected script termination. Killing child processes..."
+
+  for PID in "${PIDS[@]}"; do
+    log "Killing [PID: $PID]"
+
+    kill "$PID"
+  done
+
+  kill "$VMSTAT_PID"
+
+  wait "${PIDS[@]}" "$VMSTAT_PID"
+
+  log "Child processes killed. Exiting."
+
+  exit 2
+}
+
+# Log message with date
+function log() {
+  echo -e "$(date '+[%F %T]') $1"
+}
+
+#Check that argument is valid int
+function check_int_arg() {
+  if [[ "$1" =~ ^[0-9]+$ ]]; then
+    RETVAL="$1"
+  else
+    log "Incorrect value '$1' for argument '$2' - should be valid integer" 1>&2
+
+    exit 16
+  fi
+}
+
+# Process passed options
+function process_options() {
+  # Set default settings for test iterations
+  ITERS_CNT=1
+  ITER_TIMEOUT=60
+  INSTANCE_DELAY=1
+  VMSTAT_DELAY=3
+
+  if [ -n "$*" ]; then
+    while getopts ":c:t:d:V:" OPT; do
+      case $OPT in
+      c)
+        check_int_arg "$OPTARG" "ITERS_CNT"
+        ITERS_CNT=$RETVAL
+        ;;
+      t)
+        check_int_arg "$OPTARG" "ITER_TIMEOUT"
+        ITER_TIMEOUT=$RETVAL
+        ;;
+      d)
+        check_int_arg "$OPTARG" "INSTANCE_DELAY"
+        INSTANCE_DELAY=$RETVAL
+        ;;
+      V)
+        check_int_arg "$OPTARG" "VMSTAT_DELAY"
+        VMSTAT_DELAY=$RETVAL
+        ;;
+      *)
+        log "Incorrect parameters usage:
+        $(basename "$0") [-c ITERS_CNT] [-t ITER_TIMEOUT] [-t INSTANCE_DELAY] [-V VMSTAT_DELAY]
+            ITERS_CNT - number of iterations, performed for tests
+            ITER_TIMEOUT - iteration timeout, after reaching it child processes will be killed
+            INSTANCE_DELAY - delay between instances startup
+            VMSTAT_DELAY - delay between vmstat outputs to stdout" 1>&2
+
+        exit 15
+        ;;
+      esac
+    done
+  fi
+
+  log "Set following iteration options: [ITERS_CNT=$ITERS_CNT, ITER_TIMEOUT=$ITER_TIMEOUT, INSTANCE_DELAY=$INSTANCE_DELAY, VMSTAT_DELAY=$VMSTAT_DELAY]"
 }
