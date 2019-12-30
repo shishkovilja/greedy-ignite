@@ -3,6 +3,7 @@
 # PIDS array
 PIDS=()
 
+# TODO STRESS_NG childs PIDS checking out
 # Start iteration
 function start_iter() {
   PIDS=()
@@ -145,7 +146,7 @@ function greedy_instance() {
 
 # Get greedy instance exec string, first parameter - vm-bytes value in percent
 function stress_instance() {
-  echo "$STRESS --vm 1 --vm-bytes $1%"
+  echo "$STRESS --oomable --vm 1 --vm-bytes $1%"
 }
 
 # Check and set path to JAVA
