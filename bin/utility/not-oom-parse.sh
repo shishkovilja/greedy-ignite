@@ -10,10 +10,10 @@ else
 	exit 1
 fi
 
-# Check and set PIDS_FILE and OVERCOMMIT_LOG paths
+# Check and set PIDS_FILE and OVERCOMMIT_ERR_LOG paths
 if [[ -n "$2" && -n "$3" ]]; then
 	PIDS_FILE=$(realpath "$2")
-	OVERCOMMIT_LOG=$(realpath "$3")
+	OVERCOMMIT_ERR_LOG=$(realpath "$3")
 else
 	echo "You should specify PIDs file and overcommit.log paths" 1>&2
 	exit 1
@@ -33,10 +33,10 @@ while read -r PID; do
 	FILE=$(grep -i "PID: $PID" "$IGNITE_LOGS_DIR"/*.log | head -1 | awk -F: '{print $1}')
 
 	if [ -z "$FILE" ]; then
-		PID_RECORD=$(grep -i "$PID" "$OVERCOMMIT_LOG" | head -1)
+		PID_RECORD=$(grep "\[$PID\] successful run completed" -B5 "$OVERCOMMIT_ERR_LOG" | grep "no available memory")
 
 		if [ -n "$PID_RECORD" ]; then
-			echo -n "$(basename "$OVERCOMMIT_LOG");"
+			echo -n "$(basename "$OVERCOMMIT_ERR_LOG");"
 			echo -n "$PID_RECORD"
 		fi
 	elif [ -n "$FILE" ]; then
