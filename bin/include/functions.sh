@@ -3,21 +3,45 @@
 # PIDS array
 PIDS=()
 
-# TODO STRESS_NG childs PIDS checking out
+function add_childs() {
+  while read -r CHILD_PID; do
+    if [ -n "$CHILD_PID" ]; then
+      PROCS_STARTS+=("$(date '+%F %T')")
+      PROCS_NAMES+=("${INSTANCES_NAMES[$j]}_CHILD_OF_$1")
+      CMD_LINES+=("")
+
+      PIDS+=("$CHILD_PID")
+
+      ((PROCS_CNT++))
+
+      log ">>>>>>>>> ${INSTANCES_NAMES[$j]} child found: [PID: $CHILD_PID]"
+
+      add_childs "$CHILD_PID"
+    fi
+  done <<<"$(pgrep -P "$1")"
+}
+
 # Start iteration
 function start_iter() {
   PIDS=()
 
-  for ((j = 0; j < INSTANCES_AMOUNT; j++)); do
+  for ((j = 0; j < INSTANCES_CNT; j++)); do
     ${INSTANCES[$j]} >/dev/null &
 
     local PID=$!
     PIDS+=("$PID")
 
-    INSTANCES_STARTS+=("$(date '+%F %T')")
+    PROCS_STARTS+=("$(date '+%F %T')")
+    PROCS_NAMES+=("${INSTANCES_NAMES[$j]}")
+    CMD_LINES+=("${INSTANCES[$j]}")
+
+    ((PROCS_CNT++))
+
     log ">>>>>> ${INSTANCES_NAMES[$j]} started: [PID: $PID]"
 
     sleep "$INSTANCE_DELAY"
+
+    add_childs "$PID"
   done
 
   local VMSTAT_CNT
@@ -27,7 +51,7 @@ function start_iter() {
   VMSTAT_PID=$!
 
   ITER_DURATION=0
-  while ((ITER_DURATION <= ITER_TIMEOUT && $(ps --no-headers "${PIDS[@]}" | wc -l) == INSTANCES_AMOUNT)); do
+  while ((ITER_DURATION <= ITER_TIMEOUT && $(ps --no-headers "${PIDS[@]}" | wc -l) == PROCS_CNT)); do
     sleep 1
     ((ITER_DURATION++))
   done
@@ -49,17 +73,17 @@ function write_csv() {
   local COMMON_INFO="$OVERCOMMIT_MEMORY;$OVERCOMMIT_RATIO;$SWAPINESS;$SWAP;$TEST_NAME;$ITERATION_STARTED;$ITERATION_FINISHED;$ITER_DURATION"
 
   #                    Instance name;Survived;Instance started;Instance PID;Command line
-  echo "$COMMON_INFO;${INSTANCES_NAMES[$IDX]};$SURVIVED;${INSTANCES_STARTS[$IDX]};${PIDS[$IDX]};${INSTANCES[IDX]}" >>"$CSV_FILE"
+  echo "$COMMON_INFO;${PROCS_NAMES[$IDX]};$SURVIVED;${PROCS_STARTS[$IDX]};${PIDS[$IDX]};${CMD_LINES[$IDX]}" >>"$CSV_FILE"
 }
 
 # Finish iteration
 function finish_iter() {
-  for ((j = 0; j < INSTANCES_AMOUNT; j++)); do
+  for ((j = 0; j < PROCS_CNT; j++)); do
     if [ -n "$(ps --no-headers "${PIDS[$j]}")" ]; then
-      log ">>>>>> [${INSTANCES_NAMES[$j]}, ${PIDS[$j]}] - [SURVIVED]"
+      log ">>>>>> [${PROCS_NAMES[$j]}, ${PIDS[$j]}] - [SURVIVED]"
       write_csv $j "TRUE"
     else
-      log ">>>>>> [${INSTANCES_NAMES[$j]}, ${PIDS[$j]}] - [DIED]"
+      log ">>>>>> [${PROCS_NAMES[$j]}, ${PIDS[$j]}] - [DIED]"
       write_csv $j "FALSE"
     fi
   done
@@ -85,17 +109,17 @@ function test_instances() {
     return
   fi
 
-  local INSTANCES_AMOUNT
-  ((INSTANCES_AMOUNT = ($# - 1) / 2))
+  local INSTANCES_CNT
+  ((INSTANCES_CNT = ($# - 1) / 2))
 
   log "> Starting test: $TEST_NAME"
-  log ">>> Pending instances:"
 
+  log ">>> Pending instances:"
   INSTANCES=()
   INSTANCES_NAMES=()
-  for ((i = 1; i <= INSTANCES_AMOUNT; i++)); do
+  for ((i = 1; i <= INSTANCES_CNT; i++)); do
     INSTANCES+=("${PARAMS[$i]}")
-    INSTANCES_NAMES+=("${PARAMS[INSTANCES_AMOUNT + $i]}")
+    INSTANCES_NAMES+=("${PARAMS[INSTANCES_CNT + $i]}")
 
     log ">>>>>> [$i]: ${INSTANCES_NAMES[$i - 1]}\t${INSTANCES[$i - 1]}"
   done
@@ -107,7 +131,11 @@ function test_instances() {
     local ITERATION_STARTED
     local ITERATION_FINISHED
     local ITER_DURATION
-    local INSTANCES_STARTS=()
+
+    local PROCS_CNT=0
+    local PROCS_NAMES=()
+    local PROCS_STARTS=()
+    local CMD_LINES=()
 
     ITERATION_STARTED="$(date '+%F %T')"
     log ">>> Started iteration: $TEST_NAME: [Number: $i]"
@@ -261,7 +289,7 @@ function process_options() {
         ;;
       *)
         log "Incorrect parameters usage:
-        $(basename "$0") [-c ITERS_CNT] [-t ITER_TIMEOUT] [-t INSTANCE_DELAY] [-V VMSTAT_DELAY]
+        $(basename "$0") [-c ITERS_CNT] [-t ITER_TIMEOUT] [-d INSTANCE_DELAY] [-V VMSTAT_DELAY]
             ITERS_CNT - number of iterations, performed for tests
             ITER_TIMEOUT - iteration timeout, after reaching it child processes will be killed
             INSTANCE_DELAY - delay between instances startup
