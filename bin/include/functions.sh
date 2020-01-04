@@ -3,10 +3,11 @@
 # PIDS array
 PIDS=()
 
+# Recursively add all childs of a given PID to PIDS array
 function add_childs() {
   while read -r CHILD_PID; do
     if [ -n "$CHILD_PID" ]; then
-      PROCS_STARTS+=("$(date '+%F %T')")
+      PROCS_STARTS+=("${PROCS_STARTS[$j]}")
       PROCS_NAMES+=("${INSTANCES_NAMES[$j]}_CHILD_OF_$1")
       CMD_LINES+=("")
 
@@ -39,7 +40,9 @@ function start_iter() {
 
     log ">>>>>> ${INSTANCES_NAMES[$j]} started: [PID: $PID]"
 
-    sleep "$INSTANCE_DELAY"
+    if ((j < INSTANCES_CNT - 1)); then
+      sleep "$INSTANCE_DELAY"
+    fi
 
     add_childs "$PID"
   done
