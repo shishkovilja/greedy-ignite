@@ -40,8 +40,11 @@ function start_iter() {
 
     log ">>>>>> ${INSTANCES_NAMES[$j]} started: [PID: $PID]"
 
+
     if ((j < INSTANCES_CNT - 1)); then
       sleep "$INSTANCE_DELAY"
+    else
+      sleep 0.5
     fi
 
     add_childs "$PID"
@@ -79,6 +82,12 @@ function write_csv() {
   echo "$COMMON_INFO;${PROCS_NAMES[$IDX]};$SURVIVED;${PROCS_STARTS[$IDX]};${PIDS[$IDX]};${CMD_LINES[$IDX]}" >>"$CSV_FILE"
 }
 
+function parse_error() {
+    echo "JOOME?: $(tail -n30 "$ERR_FILE" | grep "type=CRITICAL_ERROR, err=java.lang.OutOfMemoryError" | tail -n1)"
+    echo "STRESS DIED?: $(tail -n30 "$ERR_FILE" | grep "$1")"
+    grep "$1" /var/log/messages
+}
+
 # Finish iteration
 function finish_iter() {
   for ((j = 0; j < PROCS_CNT; j++)); do
@@ -87,6 +96,9 @@ function finish_iter() {
       write_csv $j "TRUE"
     else
       log ">>>>>> [${PROCS_NAMES[$j]}, ${PIDS[$j]}] - [DIED]"
+
+      parse_error "${PIDS[$j]}"
+
       write_csv $j "FALSE"
     fi
   done

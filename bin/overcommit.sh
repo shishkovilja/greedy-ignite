@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# TODO add vm.oom_kill_allocating_task and vm.oom_dump_tasks
+
 # Set IGNITE_HOME as directory higher to one level relatively to script directory
 IGNITE_HOME=$(realpath "$(dirname "$0")"/..)
 
