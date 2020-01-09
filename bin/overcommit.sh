@@ -7,7 +7,7 @@ IGNITE_HOME=$(realpath "$(dirname "$0")"/..)
 
 # Set up logs dir (create if not exists)
 LOGS_DIR="${IGNITE_HOME}/logs"
-if [ ! -d "$LOGS_DIR" ];then
+if [ ! -d "$LOGS_DIR" ]; then
   mkdir "$LOGS_DIR"
 fi
 

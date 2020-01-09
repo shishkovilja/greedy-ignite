@@ -60,8 +60,8 @@ function start_iter() {
 
   ITER_DURATION=0
   while ((ITER_DURATION <= ITER_TIMEOUT && $(ps --no-headers "${PIDS[@]}" | wc -l) == PROCS_CNT)); do
-    sleep 1
-    ((ITER_DURATION++))
+    sleep 2
+    ((ITER_DURATION+=2))
   done
 
   #Delay, 'waiting' for release of memory
@@ -102,7 +102,7 @@ function parse_error() {
 
   # TODO su/sudo check should be added
   local OOM_RECORD
-  OOM_RECORD=$(sudo grep -i "out of memory.*${PIDS[$1]}" /var/log/messages)
+  OOM_RECORD=$(sudo grep -i "Killed process ${PIDS[$1]}" /var/log/messages)
 
   if [ -n "$OOM_RECORD" ]; then
     LAST_DIE_CAUSE="\"${LAST_DIE_CAUSE}\n\nOOM found:\n${OOM_RECORD}\""
