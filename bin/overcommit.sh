@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 
-# TODO add vm.oom_kill_allocating_task and vm.oom_dump_tasks
+# TODO add vm.oom_dump_tasks
 
 # Set IGNITE_HOME as directory higher to one level relatively to script directory
 IGNITE_HOME=$(realpath "$(dirname "$0")"/..)
 
-# Separate logs for stdout and sstderr
-ERR_FILE="$IGNITE_HOME"/overcommit.err.log
-LOG_FILE="$IGNITE_HOME"/overcommit.log
+# Set up logs dir (create if not exists)
+LOGS_DIR="${IGNITE_HOME}/logs"
+if [ ! -d "$LOGS_DIR" ];then
+  mkdir "$LOGS_DIR"
+fi
+
+# Separate logs for stdout and stderr
+ERR_FILE="$LOGS_DIR"/overcommit.err.log
+LOG_FILE="$LOGS_DIR"/overcommit.log
 
 # CSV file for automatic reports
 CSV_FILE="$IGNITE_HOME/overcommit.csv"
@@ -36,21 +42,23 @@ GREEDY_JAR="$IGNITE_HOME/lib/greedy-ignite-0.0.1-SNAPSHOT.jar"
 # Get overcommit memory parameters and swap parameters
 OVERCOMMIT_MEMORY=$(cat /proc/sys/vm/overcommit_memory)
 OVERCOMMIT_RATIO=$(cat /proc/sys/vm/overcommit_ratio)
+OOM_KILL_ALLOCATING_TASK=$(cat /proc/sys/vm/oom_kill_allocating_task)
 SWAPINESS=$(cat /proc/sys/vm/swappiness)
 SWAP=$(free | grep -i swap | awk '{ print $2 }')
 
 echo -e "\n+-------------------------------------------------------+"
 echo -e "|\t***** Starting overcommit-test: *****\t\t|\n|\t\t\t\t\t\t\t|"
-echo -e "| Date:\t\t\t$(date '+%F %T')\t\t|"
-echo -e "| vm.overcommit_memory:\t$OVERCOMMIT_MEMORY\t\t\t\t|"
-echo -e "| vm.overcommit_ratio:\t$OVERCOMMIT_RATIO\t\t\t\t|"
-echo -e "| vm.swappiness:\t$SWAPINESS\t\t\t\t|"
-echo -e "| Total swap size:\t$SWAP\t\t\t\t|"
+echo -e "| Date:\t\t\t\t$(date '+%F %T')\t|"
+echo -e "| vm.overcommit_memory:\t\t$OVERCOMMIT_MEMORY\t\t\t|"
+echo -e "| vm.overcommit_ratio:\t\t$OVERCOMMIT_RATIO\t\t\t|"
+echo -e "| vm.oom_kill_allocating_task:\t$OOM_KILL_ALLOCATING_TASK\t\t\t|"
+echo -e "| vm.swappiness:\t\t$SWAPINESS\t\t\t|"
+echo -e "| Total swap size:\t\t$SWAP\t\t\t|"
 echo -e "+-------------------------------------------------------+\n"
 
 # Write header into CSV file in case if it not exists
 if ! [ -f "$CSV_FILE" ]; then
-  echo "Overcommit memory;Overcommit Ratio;Swapiness; Swap;Test name;Iteration started;Iteration finished;Iteration duration;Instance name;Survived;Instance started;Instance PID;Command line" >>"$CSV_FILE"
+  echo "vm.overcommit_memory;vm.overcommit_ratio;vm.oom_kill_allocating_task;vm.swappiness;Swap size;Test name;Iteration started;Iteration finished;Iteration duration;Instance name;Survived;Die cause;Instance started;Instance PID;Command line" >>"$CSV_FILE"
 fi
 
 # Set kill handler in case of script interruption (killing childs)

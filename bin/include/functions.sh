@@ -9,7 +9,8 @@ function add_childs() {
     if [ -n "$CHILD_PID" ]; then
       PROCS_STARTS+=("${PROCS_STARTS[$j]}")
       PROCS_NAMES+=("${INSTANCES_NAMES[$j]}_CHILD_OF_$1")
-      CMD_LINES+=("")
+      PROCS_LOGS+=("${INSTANCES_LOGS[$j]}")
+      PROCS_CMDS+=("")
 
       PIDS+=("$CHILD_PID")
 
@@ -27,19 +28,20 @@ function start_iter() {
   PIDS=()
 
   for ((j = 0; j < INSTANCES_CNT; j++)); do
-    ${INSTANCES[$j]} >/dev/null &
+    INSTANCES_LOGS+=("${LOGS_DIR}/$(date '+%s')-${INSTANCES_NAMES[$j]}.log")
+    ${INSTANCES[$j]} &>"${INSTANCES_LOGS[$j]}" &
 
     local PID=$!
     PIDS+=("$PID")
 
     PROCS_STARTS+=("$(date '+%F %T')")
     PROCS_NAMES+=("${INSTANCES_NAMES[$j]}")
-    CMD_LINES+=("${INSTANCES[$j]}")
+    PROCS_CMDS+=("${INSTANCES[$j]}")
+    PROCS_LOGS+=("${INSTANCES_LOGS[$j]}")
 
     ((PROCS_CNT++))
 
     log ">>>>>> ${INSTANCES_NAMES[$j]} started: [PID: $PID]"
-
 
     if ((j < INSTANCES_CNT - 1)); then
       sleep "$INSTANCE_DELAY"
@@ -74,30 +76,55 @@ function start_iter() {
 function write_csv() {
   local IDX="$1"
   local SURVIVED="$2"
-  #                 "Overcommit memory;Overcommit Ratio;Swapiness; Swap;Test name;Iteration started;Iteration finished;Iteration duration;Instance name;Survived;Instance started;Instance PID;Command line"
+  #                 "vm.overcommit_memory;vm.overcommit_ratio;vm.oom_kill_allocating_task;vm.swappiness;Swap size;Test name;Iteration started;Iteration finished;Iteration duration;Instance name;Survived;Instance started;Instance PID;Command line"
 
-  local COMMON_INFO="$OVERCOMMIT_MEMORY;$OVERCOMMIT_RATIO;$SWAPINESS;$SWAP;$TEST_NAME;$ITERATION_STARTED;$ITERATION_FINISHED;$ITER_DURATION"
+  local COMMON_INFO="$OVERCOMMIT_MEMORY;$OVERCOMMIT_RATIO;$OOM_KILL_ALLOCATING_TASK;$SWAPINESS;$SWAP;$TEST_NAME;$ITERATION_STARTED;$ITERATION_FINISHED;$ITER_DURATION"
 
-  #                    Instance name;Survived;Instance started;Instance PID;Command line
-  echo "$COMMON_INFO;${PROCS_NAMES[$IDX]};$SURVIVED;${PROCS_STARTS[$IDX]};${PIDS[$IDX]};${CMD_LINES[$IDX]}" >>"$CSV_FILE"
+  #                    Instance name;Survived;Die cause;Instance started;Instance PID;Command line
+  echo -e "$COMMON_INFO;${PROCS_NAMES[$IDX]};$SURVIVED;$LAST_DIE_CAUSE;${PROCS_STARTS[$IDX]};${PIDS[$IDX]};${PROCS_CMDS[$IDX]}" >>"$CSV_FILE"
 }
 
+# Instance logs parser
 function parse_error() {
-    echo "JOOME?: $(tail -n30 "$ERR_FILE" | grep "type=CRITICAL_ERROR, err=java.lang.OutOfMemoryError" | tail -n1)"
-    echo "STRESS DIED?: $(tail -n30 "$ERR_FILE" | grep "$1")"
-    grep "$1" /var/log/messages
+  local JOOME=$(tail -n50 "${PROCS_LOGS[$1]}" | grep "type=CRITICAL_ERROR, err=java.lang.OutOfMemoryError" | tail -n1)
+  local STRESS_OOM=$(tail -n30 "${PROCS_LOGS[$1]}" | grep "${PIDS[$1]}.*no available memory")
+  local LAST_LOG_RECORDS=$(tail -n5 "${PROCS_LOGS[$1]}")
+
+  if [ -n "$JOOME" ]; then
+    LAST_DIE_CAUSE=$JOOME
+  elif [ -n "$STRESS_OOM" ]; then
+    LAST_DIE_CAUSE=$STRESS_OOM
+  else
+    # TODO Remove excessive output for parent processes (parent killed both with child)
+
+    LAST_DIE_CAUSE="No cause found in log, last 5 lines from it:\n$LAST_LOG_RECORDS"
+  fi
+
+  # TODO su/sudo check should be added
+  local OOM_RECORD
+  OOM_RECORD=$(sudo grep -i "out of memory.*${PIDS[$1]}" /var/log/messages)
+
+  if [ -n "$OOM_RECORD" ]; then
+    LAST_DIE_CAUSE="\"${LAST_DIE_CAUSE}\n\nOOM found:\n${OOM_RECORD}\""
+  else
+    LAST_DIE_CAUSE="\"${LAST_DIE_CAUSE}\""
+  fi
 }
 
 # Finish iteration
 function finish_iter() {
+  local LAST_DIE_CAUSE
+
   for ((j = 0; j < PROCS_CNT; j++)); do
+    LAST_DIE_CAUSE=""
+
     if [ -n "$(ps --no-headers "${PIDS[$j]}")" ]; then
       log ">>>>>> [${PROCS_NAMES[$j]}, ${PIDS[$j]}] - [SURVIVED]"
       write_csv $j "TRUE"
     else
       log ">>>>>> [${PROCS_NAMES[$j]}, ${PIDS[$j]}] - [DIED]"
 
-      parse_error "${PIDS[$j]}"
+      parse_error $j
 
       write_csv $j "FALSE"
     fi
@@ -129,9 +156,11 @@ function test_instances() {
 
   log "> Starting test: $TEST_NAME"
 
+  local INSTANCES=()
+  local INSTANCES_NAMES=()
+  local INSTANCES_LOGS=()
+
   log ">>> Pending instances:"
-  INSTANCES=()
-  INSTANCES_NAMES=()
   for ((i = 1; i <= INSTANCES_CNT; i++)); do
     INSTANCES+=("${PARAMS[$i]}")
     INSTANCES_NAMES+=("${PARAMS[INSTANCES_CNT + $i]}")
@@ -150,7 +179,8 @@ function test_instances() {
     local PROCS_CNT=0
     local PROCS_NAMES=()
     local PROCS_STARTS=()
-    local CMD_LINES=()
+    local PROCS_CMDS=()
+    local PROCS_LOGS=()
 
     ITERATION_STARTED="$(date '+%F %T')"
     log ">>> Started iteration: $TEST_NAME: [Number: $i]"
