@@ -24,15 +24,23 @@
 
     <bean abstract="true" id="parent.cfg" class="org.apache.ignite.configuration.IgniteConfiguration">
         <property name="cacheConfiguration">
-            <bean class="org.apache.ignite.configuration.CacheConfiguration">
-                <property name="name" value="#{ systemProperties['stomach.cache'] ?: 'stomach'}" />
-                <property name="cacheMode" value="LOCAL" />
-            </bean>
+            <list>
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="#{ systemProperties['stomach.cache'] ?: 'stomach'}"/>
+                    <property name="cacheMode" value="LOCAL"/>
+                    <property name="groupName" value="OOM"/>
+                </bean>
+                <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                    <property name="name" value="trash"/>
+                    <property name="cacheMode" value="LOCAL"/>
+                    <property name="groupName" value="OOM"/>
+                </bean>
+            </list>
         </property>
 
         <property name="discoverySpi">
             <bean class="org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi">
-                <property name="localAddress" value="127.0.0.1" />
+                <property name="localAddress" value="127.0.0.1"/>
                 <property name="localPort" value="30000"/>
                 <property name="localPortRange" value="20"/>
 
@@ -55,10 +63,10 @@
             </bean>
         </property>
 
-        <property name="gridLogger" ref="log4JLogger" />
+        <property name="gridLogger" ref="log4JLogger"/>
     </bean>
 
-    <bean id="resourceResolver" class="org.springframework.core.io.support.PathMatchingResourcePatternResolver" />
+    <bean id="resourceResolver" class="org.springframework.core.io.support.PathMatchingResourcePatternResolver"/>
 
     <bean id="log4JLogger" class="org.apache.ignite.logger.log4j.Log4JLogger">
         <constructor-arg type="java.net.URL" value="#{ resourceResolver.getResource('log4j.xml').URL }"/>

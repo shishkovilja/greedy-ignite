@@ -9,7 +9,7 @@ function add_childs() {
     if [ -n "$CHILD_PID" ]; then
       PROCS_STARTS+=("${PROCS_STARTS[$j]}")
       PROCS_NAMES+=("${INSTANCES_NAMES[$j]}_CHILD_OF_$1")
-      PROCS_LOGS+=("${INSTANCES_LOGS[$j]}")
+      PROCS_LOGS+=("${INSTANCES_LOGS[$LOGS_CNT]}")
       PROCS_CMDS+=("")
 
       PIDS+=("$CHILD_PID")
@@ -28,7 +28,7 @@ function start_iter() {
   PIDS=()
 
   for ((j = 0; j < INSTANCES_CNT; j++)); do
-    INSTANCES_LOGS+=("${LOGS_DIR}/$(date '+%s')-${INSTANCES_NAMES[$j]}.log")
+    INSTANCES_LOGS+=("${LOGS_DIR}/$(date '+%s')-${TEST_NAME}-${INSTANCES_NAMES[$j]}.log")
     ${INSTANCES[$j]} &>"${INSTANCES_LOGS[$j]}" &
 
     local PID=$!
@@ -37,7 +37,10 @@ function start_iter() {
     PROCS_STARTS+=("$(date '+%F %T')")
     PROCS_NAMES+=("${INSTANCES_NAMES[$j]}")
     PROCS_CMDS+=("${INSTANCES[$j]}")
-    PROCS_LOGS+=("${INSTANCES_LOGS[$j]}")
+
+    ((LOGS_CNT = j + (i - 1) * INSTANCES_CNT))
+
+    PROCS_LOGS+=("${INSTANCES_LOGS[$LOGS_CNT]}")
 
     ((PROCS_CNT++))
 
@@ -61,7 +64,7 @@ function start_iter() {
   ITER_DURATION=0
   while ((ITER_DURATION <= ITER_TIMEOUT && $(ps --no-headers "${PIDS[@]}" | wc -l) == PROCS_CNT)); do
     sleep 2
-    ((ITER_DURATION+=2))
+    ((ITER_DURATION += 2))
   done
 
   #Delay, 'waiting' for release of memory
@@ -86,9 +89,14 @@ function write_csv() {
 
 # Instance logs parser
 function parse_error() {
-  local JOOME=$(tail -n50 "${PROCS_LOGS[$1]}" | grep "type=CRITICAL_ERROR, err=java.lang.OutOfMemoryError" | tail -n1)
-  local STRESS_OOM=$(tail -n30 "${PROCS_LOGS[$1]}" | grep "${PIDS[$1]}.*no available memory")
-  local LAST_LOG_RECORDS=$(tail -n5 "${PROCS_LOGS[$1]}")
+  local LOG_IDX
+  ((LOG_IDX = $1 + ($2 - 1) * $3))
+
+  echo $LOG_IDX
+
+  local JOOME=$(tail -n50 "${PROCS_LOGS[$LOG_IDX]}" | grep "type=CRITICAL_ERROR, err=java.lang.OutOfMemoryError" | tail -n1)
+  local STRESS_OOM=$(tail -n30 "${PROCS_LOGS[$LOG_IDX]}" | grep "${PIDS[$1]}.*no available memory")
+  local LAST_LOG_RECORDS=$(tail -n5 "${PROCS_LOGS[$LOG_IDX]}")
 
   if [ -n "$JOOME" ]; then
     LAST_DIE_CAUSE=$JOOME
@@ -124,7 +132,7 @@ function finish_iter() {
     else
       log ">>>>>> [${PROCS_NAMES[$j]}, ${PIDS[$j]}] - [DIED]"
 
-      parse_error $j
+      parse_error $j "$i" $PROCS_CNT
 
       write_csv $j "FALSE"
     fi
@@ -158,12 +166,14 @@ function test_instances() {
 
   local INSTANCES=()
   local INSTANCES_NAMES=()
+
   local INSTANCES_LOGS=()
+  local LOGS_CNT=0
 
   log ">>> Pending instances:"
   for ((i = 1; i <= INSTANCES_CNT; i++)); do
     INSTANCES+=("${PARAMS[$i]}")
-    INSTANCES_NAMES+=("${PARAMS[INSTANCES_CNT + $i]}")
+    INSTANCES_NAMES+=("${PARAMS[$INSTANCES_CNT + $i]}")
 
     log ">>>>>> [$i]: ${INSTANCES_NAMES[$i - 1]}\t${INSTANCES[$i - 1]}"
   done

@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import ru.shishkov.config.util.GreedyProperties;
 import ru.shishkov.config.util.HungryJob;
+import ru.shishkov.config.util.OomJob;
 
 @Configuration
 public class ParentConfig {
@@ -36,5 +37,10 @@ public class ParentConfig {
     @Bean
     public HungryJob hungryJob() {
         return new HungryJob();
+    }
+
+    @Bean
+    public OomJob oomJob() {
+        return new OomJob();
     }
 }

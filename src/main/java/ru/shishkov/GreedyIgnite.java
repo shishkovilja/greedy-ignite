@@ -1,10 +1,11 @@
 package ru.shishkov;
 
+import org.apache.ignite.Ignite;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import ru.shishkov.config.ClientConfig;
 import ru.shishkov.config.ServerConfig;
-import ru.shishkov.config.util.HungryJob;
+import ru.shishkov.config.util.OomJob;
 
 /**
  * Utility is developed to check Apache Ignite behaviour when it uses memory more than operating system has. It's
@@ -18,8 +19,14 @@ public class GreedyIgnite {
     public static void main(String[] args) {
         ApplicationContext ctx = init();
 
-        HungryJob hungryJob = (HungryJob)ctx.getBean("hungryJob");
-        hungryJob.performJob();
+//        HungryJob hungryJob = (HungryJob)ctx.getBean("hungryJob");
+//        hungryJob.performJob();
+
+        Ignite ignite = (Ignite)ctx.getBean("igniteInstance");
+        ignite.cluster().active(true);
+
+        OomJob oomJob = (OomJob)ctx.getBean("oomJob");
+        oomJob.performJob();
 
 //        switch (args[0]) {
 //            case "lazy-test":
